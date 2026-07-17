@@ -1,10 +1,10 @@
 #!/bin/bash
 # ======================================================
-# SETUP SCRIPT – installs rclone + creates upload script
+# SETUP SCRIPT – installs rclone + creates upload.sh & batch-upload.sh
 # Also ensures all required packages (wget, unzip, bash, nano, curl) are installed.
 # Run once on a new instance.
 # Then edit ~/.config/rclone/rclone.conf with your keys.
-# Use upload.sh to upload files.
+# Use upload.sh for single files, batch-upload.sh for lists.
 # ======================================================
 
 set -e
@@ -92,17 +92,13 @@ else
     echo "✅ Config already exists – leaving it untouched."
 fi
 
-# ---------- 3. Create the upload script ----------
-UPLOAD_SCRIPT="./upload.sh"
-
-cat > "$UPLOAD_SCRIPT" <<'EOF'
+# ---------- 3. Create upload.sh (single file upload) ----------
+cat > ./upload.sh <<'EOF'
 #!/bin/bash
 # ============================================================
 # UPLOAD SCRIPT – stream from URL to Internet Archive via rclone
-# Usage:
-#   ./upload.sh <public_url> <rclone_remote_path>
-# Example:
-#   ./upload.sh https://example.com/video.mp4 ia2:/bucket/path/video.mp4
+# Usage: ./upload.sh <public_url> <rclone_remote_path>
+# Example: ./upload.sh https://example.com/video.mp4 ia2:/bucket/path/video.mp4
 # ============================================================
 
 if [ $# -ne 2 ]; then
@@ -148,11 +144,106 @@ else
 fi
 EOF
 
-chmod +x "$UPLOAD_SCRIPT"
-echo "✅ Upload script created: $UPLOAD_SCRIPT"
+chmod +x ./upload.sh
+echo "✅ Created: upload.sh"
+
+# ---------- 4. Create batch-upload.sh (batch processing) ----------
+cat > ./batch-upload.sh <<'EOF'
+#!/bin/bash
+# ============================================================
+# BATCH UPLOAD – processes a list of URL + remote pairs
+# Usage: ./batch-upload.sh <input_file>
+# Example: ./batch-upload.sh batch-1.txt
+#
+# Output:
+#   <input_file>-success.txt  (all successful uploads)
+#   <input_file>-failed.txt   (all failed uploads)
+# ============================================================
+
+if [ $# -ne 1 ]; then
+    echo "❌ Usage: $0 <input_file>"
+    echo "   Example: $0 batch-1.txt"
+    exit 1
+fi
+
+INPUT_FILE="$1"
+
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "❌ File not found: $INPUT_FILE"
+    exit 1
+fi
+
+# Generate output filenames based on input file
+BASE_NAME="${INPUT_FILE%.txt}"
+SUCCESS_FILE="${BASE_NAME}-success.txt"
+FAILED_FILE="${BASE_NAME}-failed.txt"
+
+# Clear previous output files
+> "$SUCCESS_FILE"
+> "$FAILED_FILE"
+
+echo "📤 Processing: $INPUT_FILE"
+echo "   Success log: $SUCCESS_FILE"
+echo "   Failed log:  $FAILED_FILE"
+echo ""
+
+count=0
+success=0
+failed=0
+
+while IFS= read -r line; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    
+    # Split line into URL and remote
+    read -r url remote <<< "$line"
+    
+    if [ -z "$url" ] || [ -z "$remote" ]; then
+        echo "⚠️  Skipping malformed line: $line"
+        continue
+    fi
+    
+    ((count++))
+    echo "--- [#$count] Uploading: $url ---"
+    
+    if ./upload.sh "$url" "$remote"; then
+        echo "✅ [#$count] Success"
+        echo "$url $remote" >> "$SUCCESS_FILE"
+        ((success++))
+    else
+        echo "❌ [#$count] FAILED: $url -> $remote"
+        echo "$url $remote" >> "$FAILED_FILE"
+        ((failed++))
+    fi
+    echo ""
+done < "$INPUT_FILE"
+
+echo "=========================="
+echo "📊 Summary:"
+echo "   Total processed: $count"
+echo "   ✅ Success: $success"
+echo "   ❌ Failed:  $failed"
+echo ""
+echo "📁 Success list saved to: $SUCCESS_FILE"
+echo "📁 Failed list saved to:  $FAILED_FILE"
+echo ""
+if [ $failed -gt 0 ]; then
+    echo "🔄 To retry failed uploads, run:"
+    echo "   while read -r u r; do ./upload.sh \"\$u\" \"\$r\"; done < $FAILED_FILE"
+fi
+EOF
+
+chmod +x ./batch-upload.sh
+echo "✅ Created: batch-upload.sh"
 
 echo ""
 echo "🎉 Setup complete!"
 echo "1. Edit $CONFIG_FILE and add your Internet Archive keys:"
 echo "   nano $CONFIG_FILE"
-echo "2. Use ./upload.sh <url> <remote> to upload files."
+echo ""
+echo "2. Use upload.sh for a single file:"
+echo "   ./upload.sh <url> <remote>"
+echo ""
+echo "3. Use batch-upload.sh for multiple files:"
+echo "   Create a list file (e.g., batch-1.txt) with one 'url remote' per line."
+echo "   Then run: ./batch-upload.sh batch-1.txt"
