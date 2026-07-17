@@ -2,7 +2,7 @@ On a brand new instance
 
 1. Get the script (from your GitHub repo):
    ```bash
-   curl -O https://raw.githubusercontent.com/your-username/rclone-setup/main/rclone-setup.sh
+   curl -O https://raw.githubusercontent.com/Karthik7013/upload-pipe/refs/heads/main/rclone-setup.sh
    ```
 2. Make it executable:
    ```bash
@@ -33,7 +33,7 @@ Or even shorter – one‑liner setup
 If you want to skip the separate download+chmod+run steps:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/your-username/rclone-setup/main/rclone-setup.sh)
+bash <(curl -s https://raw.githubusercontent.com/Karthik7013/upload-pipe/refs/heads/main/rclone-setup.sh)
 ```
 
 This runs the setup immediately – still need to edit the config afterwards, of course.
