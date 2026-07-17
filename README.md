@@ -1,9 +1,3 @@
-Yes – you've got it exactly right. 🎯
-
-Here’s the flow you just described, step by step:
-
----
-
 On a brand new instance
 
 1. Get the script (from your GitHub repo):
@@ -51,13 +45,5 @@ Important: upload.sh uses wget + rclone rcat
 The upload script streams directly from the URL to IA – no local file stored. It shows progress and returns clear success/failure messages.
 
 ---
-
-Your workflow is now:
-
-· One‑time setup per instance → rclone-setup.sh
-· Edit config once with keys → nano ~/.config/rclone/rclone.conf
-· Repeated uploads → ./upload.sh <url> <remote>
-
-That’s it – no more manual zip‑extract‑copy‑path dances, no repeated package installs, no re‑typing keys.
 
 You’re ready to go. 🚀
